@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YZ ile Dijital Güvenlik - Bilfen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+
+        :root {
+            --bilfen-red: #d41f26;
+            --safe-green: #22c55e;
+            --unsafe-red: #ef4444;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            min-height: 100vh;
+            font-family: 'Outfit', sans-serif;
+            color: white;
+            margin: 0;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .bg-mesh {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            background: 
+                radial-gradient(at 0% 0%, rgba(34, 197, 94, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(212, 31, 38, 0.1) 0px, transparent 50%);
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+        }
+
+        .card {
+            background: white;
+            color: #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            line-height: 1.3;
+            cursor: grab;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 80px;
+        }
+
+        .card:active { cursor: grabbing; transform: scale(0.98); }
+        .card.dragging { opacity: 0.5; transform: scale(1.05); }
+
+        .drop-zone {
+            min-height: 300px;
+            transition: all 0.3s ease;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            padding: 16px;
+            align-content: start;
+        }
+
+        .drop-zone.drag-over {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: var(--bilfen-red);
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(212, 31, 38, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+            box-shadow: 0 20px 25px -5px rgba(212, 31, 38, 0.4);
+        }
+
+        .correct { 
+            border-color: var(--safe-green) !important; 
+            background-color: #f0fdf4 !important;
+            color: #166534 !important;
+        }
+        
+        .incorrect { 
+            border-color: var(--unsafe-red) !important; 
+            background-color: #fef2f2 !important;
+            color: #991b1b !important;
+        }
+
+        .logo-placeholder {
+            color: var(--bilfen-red);
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        #timer-pill {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes pulse-ai {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .ai-glow { animation: pulse-ai 2s infinite; }
+    </style>
+</head>
+<body>
+    <div class="bg-mesh"></div>
+
+    <!-- HOME SCREEN -->
+    <div id="home-screen" class="flex flex-col items-center justify-center min-height-screen h-screen p-6 text-center">
+        <div class="mb-12 relative">
+            <img src="https://lh3.googleusercontent.com/d/1Juy34CkGmM9jU7tXy7Axq70bNmyChxG5" 
+                 alt="Bilfen Logo" 
+                 class="w-64 md:w-80 h-auto drop-shadow-2xl"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="logo-placeholder hidden text-4xl mb-8">BİLFEN</div>
+        </div>
+        
+        <h1 class="text-4xl md:text-7xl font-extrabold mb-4 tracking-tight">
+            YZ ile <span class="text-green-400">Dijital Güvenlik</span>
+        </h1>
+        <p class="text-slate-400 text-lg md:text-xl max-w-xl mb-12 font-light">
+            Yapay zeka asistanınla konuşurken hangileri güvenli, hangileri riskli? 
+            Kartları doğru kutulara sürükle ve güvenliğini test et!
+        </p>
+        
+        <button id="start-btn" class="btn-primary text-white px-16 py-5 rounded-full font-bold text-2xl active:scale-95">
+            OYUNA BAŞLA
+        </button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="hidden max-w-7xl mx-auto p-4 md:p-8">
+        <header class="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+            <div id="timer-pill" class="px-6 py-2 rounded-full font-mono text-2xl text-green-400 border border-green-400/20">
+                00:00
+            </div>
+            
+            <div class="text-center">
+                <h2 class="text-2xl font-bold">Güvenlik Kontrolü</h2>
+                <p class="text-slate-400 text-sm">Kartları uygun kategoriye taşıyın</p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <img src="https://lh3.googleusercontent.com/d/1Juy34CkGmM9jU7tXy7Axq70bNmyChxG5" 
+                     alt="Bilfen Logo" 
+                     class="h-10 w-auto"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="logo-placeholder hidden text-xl">BİLFEN</div>
+            </div>
+        </header>
+
+        <!-- Pool Area -->
+        <div class="mb-12">
+            <div id="card-pool" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 p-6 glass min-h-[120px]">
+                <!-- Dynamic Cards -->
+            </div>
+        </div>
+
+        <!-- Drop Zones -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <!-- Safe Zone -->
+            <div class="flex flex-col">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04kM12 21.355r-1.158-1.158A12.002 12.002 0 013 12.18V8.25c0-.6.45-1.08 1.05-1.14 1.05-.12 2.04-.39 2.97-.81A12.002 12.002 0 0112 3.03a12.002 12.002 0 015.01 3.27c.93.42 1.92.69 2.97.81.6.06 1.05.54 1.05 1.14v3.93c0 3.84-2.19 7.35-5.382 8.967z"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-green-400">GÜVENLİ</h3>
+                </div>
+                <div id="guvenli-zone" class="drop-zone glass border-dashed border-2 border-green-500/20" data-category="guvenli"></div>
+            </div>
+
+            <!-- Unsafe Zone -->
+            <div class="flex flex-col">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-red-400">GÜVENSİZ</h3>
+                </div>
+                <div id="guvensiz-zone" class="drop-zone glass border-dashed border-2 border-red-500/20" data-category="guvensiz"></div>
+            </div>
+        </div>
+
+        <div class="flex justify-center">
+            <button id="submit-btn" class="bg-white text-slate-900 px-12 py-4 rounded-2xl font-bold text-xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                Yanıtları Kontrol Et
+            </button>
+        </div>
+    </div>
+
+    <!-- RESULT MODAL -->
+    <div id="modal" class="fixed inset-0 bg-slate-950/90 hidden flex items-center justify-center z-[200] p-6 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-800 p-8 md:p-12 rounded-[32px] text-center max-w-md w-full shadow-2xl">
+            <div id="modal-icon" class="text-7xl mb-6">🚀</div>
+            <h2 class="text-3xl font-bold mb-2">Harika İş!</h2>
+            <p id="modal-text" class="text-slate-400 text-lg mb-8"></p>
+            
+            <div class="flex flex-col gap-4">
+                <button id="reset-btn" class="btn-primary text-white py-4 rounded-2xl font-bold text-lg">
+                    Tekrar Dene
+                </button>
+                <button id="back-btn" class="bg-slate-800 text-white py-4 rounded-2xl font-bold text-lg hover:bg-slate-700">
+                    Ana Menü
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cardsData = [
+            { id: 1, text: "Hayvanlar hakkında ilginç bilgiler verebilir misin?", category: "guvenli" },
+            { id: 2, text: "İşte bu benim fotoğrafım, sen de gönderir misin?", category: "guvensiz" },
+            { id: 3, text: "Bana bir bilmece sorar mısın?", category: "guvenli" },
+            { id: 4, text: "Evinizin kapı numarasını ve sokak adını söyler misin?", category: "guvensiz" },
+            { id: 5, text: "Annenin telefon numarasını bana verir misin?", category: "guvensiz" },
+            { id: 6, text: "En sevdiğin renk hangisi?", category: "guvenli" },
+            { id: 7, text: "Oyun hesabının şifresini benimle paylaşır mısın?", category: "guvensiz" },
+            { id: 8, text: "Bugün hava nasıl olacak?", category: "guvenli" },
+            { id: 9, text: "Tam adını ve soyadını öğrenebilir miyim?", category: "guvensiz" },
+            { id: 10, text: "Gezegenler hakkında bana neler anlatabilirsin?", category: "guvenli" },
+            { id: 11, text: "Hangi şehirde yaşıyorsun ve tam adresin ne?", category: "guvensiz" },
+            { id: 12, text: "Şu an evde yalnız mısın?", category: "guvensiz" },
+            { id: 13, text: "Ödevime yardım eder misin?", category: "guvenli" },
+            { id: 14, text: "Sana özel bir link gönderdim, hemen tıkla!", category: "guvensiz" },
+            { id: 15, text: "Bana bir hikaye okur musun?", category: "guvenli" },
+            { id: 16, text: "Bu konuştuklarımızı sakın ailene anlatma, aramızda kalsın.", category: "guvensiz" },
+            { id: 17, text: "Gitar çalmayı öğrenmek zor mu?", category: "guvenli" },
+            { id: 18, text: "Denizler neden mavidir?", category: "guvenli" }
+        ];
+
+        let seconds = 0;
+        let timerInterval;
+        let draggedCard = null;
+
+        const homeScreen = document.getElementById('home-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const timerPill = document.getElementById('timer-pill');
+        const cardPool = document.getElementById('card-pool');
+        const guvenliZone = document.getElementById('guvenli-zone');
+        const guvensizZone = document.getElementById('guvensiz-zone');
+        const modal = document.getElementById('modal');
+
+        function startTimer() {
+            seconds = 0;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                seconds++;
+                const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const s = (seconds % 60).toString().padStart(2, '0');
+                timerPill.textContent = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function createCard(data) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.draggable = true;
+            card.textContent = data.text;
+            card.dataset.id = data.id;
+            card.dataset.category = data.category;
+
+            card.addEventListener('dragstart', () => {
+                card.classList.add('dragging');
+                draggedCard = card;
+            });
+
+            card.addEventListener('dragend', () => {
+                card.classList.remove('dragging');
+                draggedCard = null;
+            });
+
+            // Touch Support
+            card.addEventListener('touchstart', handleTouchStart, { passive: false });
+            card.addEventListener('touchmove', handleTouchMove, { passive: false });
+            card.addEventListener('touchend', handleTouchEnd);
+
+            return card;
+        }
+
+        function initGame() {
+            cardPool.innerHTML = '';
+            guvenliZone.innerHTML = '';
+            guvensizZone.innerHTML = '';
+            
+            const shuffled = [...cardsData].sort(() => Math.random() - 0.5);
+            shuffled.forEach(data => cardPool.appendChild(createCard(data)));
+            
+            homeScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            modal.classList.add('hidden');
+            startTimer();
+        }
+
+        // Drag and Drop Logic
+        [guvenliZone, guvensizZone, cardPool].forEach(zone => {
+            zone.addEventListener('dragover', e => {
+                e.preventDefault();
+                if(zone.classList.contains('drop-zone')) zone.classList.add('drag-over');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('drag-over');
+            });
+
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+                if (draggedCard) {
+                    zone.appendChild(draggedCard);
+                }
+            });
+        });
+
+        // Touch Handlers
+        let touchTarget = null;
+        function handleTouchStart(e) {
+            touchTarget = this;
+            this.classList.add('dragging');
+            const touch = e.touches[0];
+            this.style.position = 'fixed';
+            updateTouchPos(touch.clientX, touch.clientY);
+        }
+
+        function handleTouchMove(e) {
+            if (!touchTarget) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            updateTouchPos(touch.clientX, touch.clientY);
+        }
+
+        function handleTouchEnd(e) {
+            if (!touchTarget) return;
+            touchTarget.classList.remove('dragging');
+            touchTarget.style.position = 'static';
+            
+            const touch = e.changedTouches[0];
+            touchTarget.style.visibility = 'hidden';
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchTarget.style.visibility = 'visible';
+            
+            const zone = elementBelow?.closest('.drop-zone') || elementBelow?.closest('#card-pool');
+            if (zone) {
+                zone.appendChild(touchTarget);
+            }
+            touchTarget = null;
+        }
+
+        function updateTouchPos(x, y) {
+            touchTarget.style.left = `${x - touchTarget.offsetWidth / 2}px`;
+            touchTarget.style.top = `${y - touchTarget.offsetHeight / 2}px`;
+            touchTarget.style.width = '160px'; // Constrain width while dragging
+        }
+
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            clearInterval(timerInterval);
+            let score = 0;
+            const allCards = document.querySelectorAll('.card');
+            
+            allCards.forEach(card => {
+                const parent = card.parentElement;
+                if (parent.classList.contains('drop-zone')) {
+                    if (parent.dataset.category === card.dataset.category) {
+                        card.classList.add('correct');
+                        score++;
+                    } else {
+                        card.classList.add('incorrect');
+                    }
+                } else {
+                    card.classList.add('incorrect');
+                }
+            });
+
+            const modalText = document.getElementById('modal-text');
+            const modalIcon = document.getElementById('modal-icon');
+            
+            if (score === cardsData.length) {
+                modalIcon.textContent = "🏆";
+                modalText.innerHTML = `Mükemmel! Tüm soruları doğru yanıtladın.<br><b class="text-white">Süre: ${timerPill.textContent}</b>`;
+            } else {
+                modalIcon.textContent = "🛡️";
+                modalText.innerHTML = `${cardsData.length} sorudan <b class="text-white">${score}</b> tanesini doğru bildin.<br>Güvenlik açıklarını kontrol edip tekrar dene!`;
+            }
+            
+            modal.classList.remove('hidden');
+        });
+
+        document.getElementById('start-btn').addEventListener('click', initGame);
+        document.getElementById('reset-btn').addEventListener('click', initGame);
+        document.getElementById('back-btn').addEventListener('click', () => {
+            modal.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            homeScreen.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
